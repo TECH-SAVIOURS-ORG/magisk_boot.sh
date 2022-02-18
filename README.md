@@ -1,2 +1,3 @@
 # magisk_boot.sh
-Quick boot patch script for Magisk
+The script patches the `boot.img` of LineageOS after an OTA update having LineageOS recovery running.  
+It actually follows [Magisk's official instructions](https://topjohnwu.github.io/Magisk/install.html#patching-images), just in a quicker way.
