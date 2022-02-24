@@ -1,28 +1,31 @@
 #!/bin/bash
 
 HOST_DIR="$HOME/magisk"
-DEVICE_DIR="/sdcard/Android/data/org.lineageos.updater/files/LineageOS\ updates/"
-DEVICE_DIR_noescape=/sdcard/Android/data/org.lineageos.updater/files/LineageOS\ updates/
+#DEVICE_DIR="/sdcard/Android/data/org.lineageos.updater/files/LineageOS\ updates/"
+DEVICE_DIR="/sdcard/Download"
+LINEAGE="lineage-*-signed.zip"
 
-# Check for lineage update/zip file
-for file in $(adb shell ls $DEVICE_DIR)
+if [ ! -d $HOST_DIR ]; then
+  mkdir -p $HOST_DIR;
+fi
+
+for file in $(adb shell ls $DEVICE_DIR/$LINEAGE)
 do
-    file=$(echo -e $file | tr -d "\r\n"); # EOL fix
-    echo $file
+    file=$(echo -e $file | xargs -n 1 basename);
 done
 
-# Get latest lineageos zip file and extract boot.img
-if [[ `adb shell ls $DEVICE_DIR$file 2> /dev/null` ]]; then
-    adb pull "$DEVICE_DIR_noescape/$file" $HOST_DIR/;
+# Get latest lineageos zip file
+if adb shell ls $DEVICE_DIR/$LINEAGE ; then
+    adb pull $DEVICE_DIR/$file $HOST_DIR/;
 else
-    echo "Zip file does not exist."
-    read -p "Did you export the rom/zip file? If not got to Settings-System-Updater and run the script again."
+    echo "Zip file does not exist.
+Did you export the rom/zip file? If not got to Settings-System-Updater and run the script again."
 exit
 fi
 
 # Get and push boot.img
 cd $HOST_DIR
-unzip lineage-18.1-*-nightly-*-signed.zip boot.img
+unzip $file boot.img
 adb push boot.img /sdcard/Download/
 
 # Magisk boot.img patch and flash
@@ -33,24 +36,34 @@ fastboot flash boot magisk_patched-*.img
 fastboot reboot
 
 # Clean up
-echo -n "Do you want to delete lineage-18.1-*-nightly-*-signed.zip, boot.img and magisk_patched file on your computer? (y/n)?"
+echo -n "Do you want to delete $file, boot.img and magisk_patched file on your computer? (y/n)"
 read answer
 if [ "$answer" != "${answer#[Yy]}" ] ;then
-    rm lineage-18.1-*-nightly-*-signed.zip
+    rm $file
     rm boot.img
     rm magisk_patched-*.img
 else
-    echo "Ok. Keep it."
+    echo "Ok, keep it. But remember to delete it before you run the script again. It may cause problems if the wrong patch is being flashed. E.g. bootloop. Just moved in a backup folder."
 fi
 
-echo -n "Do you want to delete LineageOS zip file on your phone. (y/n)? Check your device is fully loaded."
+echo -n "Do you want to delete $file, boot.img and magisk_patched file on your phone? (y/n) - Check your device is fully loaded."
 read answer
 
 if [ "$answer" != "${answer#[Yy]}" ] ;then
-    adb shell rm "/sdcard/Android/data/org.lineageos.updater/files/LineageOS\ updates/$file"
-   echo "Delete magisk patched file manually in download folder."
+    adb shell rm $DEVICE_DIR/$file
+    adb shell rm $DEVICE_DIR/boot.img
+    adb shell rm $DEVICE_DIR/magisk_patched-*.img   
 else
-    echo "Ok. Keep it."
+    echo "Ok, keep it. But remember to delete it before you run the script again. It may cause problems if the wrong patch is being flashed. E.g. bootloop. Just moved in a backup folder."
+fi
+
+echo -n "Do you want to delete $HOST_DIR? (y/n)?"
+read answer
+
+if [ "$answer" != "${answer#[Yy]}" ] ;then
+    rm -r $HOST_DIR  
+else
+    echo "Kept $HOST_DIR."
 fi
 
 echo "That's it"
